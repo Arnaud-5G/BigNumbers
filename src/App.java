@@ -1,7 +1,10 @@
 public class App {
     public static void main(String[] args) throws Exception {
-        BigNumber number = new BigNumber("9");
-        number.add(new BigNumber("9"));
-        System.out.println(number);
+        // 7.5 ms
+        BigNumber number = new BigNumber("999999999999999999999999999999999999999999999999999999999");
+
+        for (String string : number.toBinary()) {
+            System.out.print(string);
+        }
     }
 }

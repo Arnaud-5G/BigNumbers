@@ -1,63 +1,121 @@
+import java.util.Arrays;
+
 public class BigNumber {
-    private String number;
+    private long[] binary;
+    private byte[] BCD;
     private boolean negative;
 
     public BigNumber(String number) {
-        this.number = number;
+        this.BCD = numberToBCD(number);
+        this.binary = doubleDabble(this.BCD);
     }
 
     public BigNumber(BigNumber number) {
-        this.number = number.toString();
+        this.BCD = numberToBCD(number.toUnsignedString());
+        this.binary = doubleDabble(this.BCD);
         this.negative = number.isNegative();
     }
 
-    public void add(BigNumber number) {
-        boolean addedOne = false;
-
-        while(this.number.length() - number.toString().length() < 0) {
-            this.number = "0" + this.number;
+    private byte[] numberToBCD(String number) {
+        if(number.charAt(0) == '-') {
+            number = number.substring(1);
+            this.negative = true;
         }
 
-        while(number.toString().length() - this.number.length() < 0) {
-            number = new BigNumber("0" + number.toString());
+        byte[] BCD = new byte[number.length()];
+
+        for (int i = 0; i < number.length(); i++) {
+            BCD[i] = Byte.valueOf(String.valueOf(number.charAt(i)));
         }
+        return BCD;
+    }
 
-        for (int i = number.toString().length()-1; i >= 0; i--) {
-            byte num1 = Byte.parseByte(String.valueOf(this.number.charAt(i)));
-            byte num2 = Byte.parseByte(String.valueOf(number.toString().charAt(i)));
+    private long[] doubleDabble(byte[] BCD) {
+        long[] binaryArray = new long[(BCD.length * 8) / 64 + 1]; // Maximum possible size
+        int binaryArrayIndex = 0;
+        int bitPosition = 0;
+        boolean isComplete = false;
+        boolean hasOverflown = false;
 
-            num1 += num2;
+        while(!isComplete) {
+            for (int i = 0; i < BCD.length; i++) {
+                boolean isOverflowing = hasOverflown;
+                hasOverflown = false;
 
-            if(addedOne) {
-                num1++;
-                addedOne = false;
+                if((BCD[i] & 1) == 1) {
+                    hasOverflown = true;
+                }
+
+                BCD[i] >>>= 1;
+
+                if(isOverflowing) {
+                    BCD[i] |= 8;
+                }
+
+                if(BCD[i] >= 8) {
+                    BCD[i] -= 3;
+                }
             }
 
-            if(String.valueOf(num1).length() > 1) {
-                addedOne = true;
+            if(hasOverflown) {
+                binaryArray[binaryArrayIndex] |= (1L << bitPosition);
+                hasOverflown = false;
             }
 
-            StringBuilder newNumber = new StringBuilder(this.number);
-            newNumber.setCharAt(i, String.valueOf(num1).charAt(String.valueOf(num1).length()-1));
+            bitPosition++;
 
-            this.number = newNumber.toString();
+            if(bitPosition == 64) {
+                binaryArrayIndex++;
+                bitPosition = 0;
+            }
+
+            isComplete = true;
+            for (byte b : BCD) {
+                isComplete &= (b == 0);
+            }
         }
 
-        if(addedOne) {
-            this.number = "1" + this.number;
-        }
+        // Trim the array to the actual size
+        return Arrays.copyOf(binaryArray, binaryArrayIndex + (bitPosition > 0 ? 1 : 0));
     }
 
     @Override
     public String toString() {
-        return this.number;
+        String number = "";
+
+        for (int i = 0; i < BCD.length; i++) {
+            number = String.valueOf(BCD[i]) + number;
+        }
+
+        if(isNegative()) {
+            return "-" + number;
+        }
+
+        return number;
+    }
+
+    public String toUnsignedString() {
+        String number = "";
+        for (int i = 0; i < BCD.length; i++) {
+            number = String.valueOf(BCD[i]) + number;
+        }
+        return number;
+    }
+
+    public String[] toBinary() {
+        String[] binary = new String[this.binary.length];
+        for (int i = binary.length - 1; i >= 0 ; i--) {
+            binary[i] = Long.toBinaryString(this.binary[binary.length - 1 - i]);
+
+            // add leading zeros
+            while(binary[i].length() < 64 && i != 0) {
+                binary[i] = "0" + binary[i];
+            }
+        }
+        return binary;
     }
 
     public boolean isNegative() {
         return this.negative;
-    }
-
-    public int size() {
-        return number.length();
     }
 }
